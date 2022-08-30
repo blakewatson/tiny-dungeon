@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, width=device-width" />
+    <title>Tiny Dungeon</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script defer src="js/squirrelly.min.js"></script>
+    <script defer type="module" src="js/app.js"></script>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <div class="map" data-location="shop">
+        <img class="map-image" src="images/map.png" />
+
+        <div class="labels">
+          <div class="label label-shop">
+            <strong>Shop</strong>
+            <span>Potion = 2 gold</span>
+          </div>
+
+          <div class="label label-tomb">
+            <strong>Tomb</strong>
+            <span>Skeletons get +1♥</span>
+          </div>
+
+          <div class="label label-camp">
+            <strong>Camp</strong>
+            <span>Orcs & goblins get +1♥</span>
+          </div>
+
+          <div class="label label-cave">
+            <strong>Cave</strong>
+            <span>Trolls get +1♥</span>
+          </div>
+
+          <div class="label label-den">
+            <strong>Den</strong>
+            <span>Dragons get +1♥</span>
+          </div>
+        </div>
+
+        <div class="player-marker"></div>
+      </div>
+
+      <p class="message"></p>
+      <div class="view-controls"></div>
+      <div class="view-character"></div>
+    </div>
+  </body>
+</html>
