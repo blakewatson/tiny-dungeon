@@ -12,14 +12,16 @@ html {
   box-sizing: inherit;
 }
 
-html {
-  font-family: Georgia, serif;
-}
-
 .wrapper {
   margin: 0 auto;
   margin-top: 2rem;
   max-width: 640px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --b-bg-1: #e6e1dc;
+  }
 }
 
 /* -- Map ----------------------------------------- */
