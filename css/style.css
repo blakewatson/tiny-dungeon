@@ -21,6 +21,7 @@ html {
 @media (prefers-color-scheme: light) {
   :root {
     --b-bg-1: #e6e1dc;
+    --b-line: #c0bab4;
   }
 }
 
