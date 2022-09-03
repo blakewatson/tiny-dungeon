@@ -1,4 +1,6 @@
 @import url('normalize.css');
+@import url('bamboo.min.css');
+@import url('spacing.css');
 
 /* apply a natural box layout model to all elements, but allowing components to change */
 html {
@@ -17,13 +19,15 @@ html {
 .wrapper {
   margin: 0 auto;
   margin-top: 2rem;
-  max-width: 600px;
+  max-width: 640px;
 }
 
 /* -- Map ----------------------------------------- */
 
 .map {
   position: relative;
+  margin: 0 auto;
+  max-width: 500px;
 }
 
 .map-image {
@@ -44,6 +48,9 @@ html {
   transform: translate(-50%, -50%);
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
+  font-size: 13px;
+  line-height: 1.2em;
+  color: #2e3440;
   background-color: rgba(255, 255, 255, 0.75);
 }
 
@@ -110,3 +117,23 @@ html {
 }
 
 /* -- /Map -- */
+
+.message {
+  min-height: 3em;
+  transition: opacity 0.15s linear;
+}
+
+.fade-out {
+  opacity: 0;
+}
+
+.view-controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.view-controls button {
+  margin: 0 0.5rem;
+  margin-bottom: 0.5rem;
+}

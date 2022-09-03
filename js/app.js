@@ -1,5 +1,6 @@
 import characterTemplate from './templates/character.js';
 import controlsTemplate from './templates/controls.js';
+import locationTemplate from './templates/location.js';
 import playerMarkerTemplate from './templates/playerMarker.js';
 
 // -- Constants -----------------------------------
@@ -51,41 +52,30 @@ const itemsDisplay = {
   6: 'Amulet (+1)'
 };
 
-const state = {
-  name: 'Player',
-  character: 0,
-  level: 0,
-  room: 0,
-  hp: 3,
-  gold: 0,
-  inventory: [],
-  activeMonster: false, // monster object
-  activeTrap: false,
-  message: '',
-  playerCanMove: true,
-  races,
-  rooms,
-  monsters
-};
+let state = null;
 
 // -- /Constants --
 
 // -- Game functions ------------------------------
 
 function main() {
-  state.character = 1;
-  state.name = 'Frodo';
-  nextLevel();
+  // state.character = 1;
+  // state.name = 'Frodo';
+  // nextLevel();
+  state = stateFactory();
   render();
 }
 
 function attack() {
   state.message = '';
 
-  let attackBonus = state.inventory.reduce((acc, val) => {
-    if (val === Items.Amulet || val === Items.Sword) {
+  let attackBonus = Object.keys(state.inventory).reduce((acc, key) => {
+    key = parseInt(key);
+
+    if (key === Items.Amulet || key === Items.Sword) {
       acc++;
     }
+
     return acc;
   }, 0);
 
@@ -101,10 +91,13 @@ function attack() {
 
   const playerRoll = results.reduce((acc, val) => (val > acc ? val : acc), 0);
 
-  const armorBonus = state.inventory.reduce((acc, val) => {
-    if (val === Items.Armor) {
+  const armorBonus = Object.keys(state.inventory).reduce((acc, key) => {
+    key = parseInt(key);
+
+    if (key === Items.Armor) {
       acc++;
     }
+
     return acc;
   }, 0);
 
@@ -141,6 +134,11 @@ function attack() {
     if (state.hp) {
       state.playerCanMove = true;
     }
+
+    // chance of loot drop
+    if (success(roll())) {
+      handleItem();
+    }
   }
 
   if (state.hp === 0) {
@@ -150,7 +148,19 @@ function attack() {
   render();
 }
 
+function buyHealingPotion() {
+  if (state.gold < 2) {
+    state.message = "You don't have enough gold to buy a healing potion.";
+    return render();
+  }
+
+  state.gold -= 2;
+  state.inventory[Items.Potion]++;
+  render();
+}
+
 function goToRoom(roomNum) {
+  state.message = '';
   state.activeMonster = false;
   state.activeTrap = false;
   state.room = roomNum;
@@ -165,70 +175,114 @@ function goToRoom(roomNum) {
       }, but it seems empty.`;
 
       state.playerCanMove = true;
-      rooms[state.room].status = RoomStatus.Clear;
     } else if (result === 2) {
       // trap
       state.activeTrap = true;
       state.message = 'It’s a trap! Roll to avoid.';
       state.playerCanMove = false;
     } else if (result === 6) {
-      // new item
-      let itemRoll = roll();
-
-      if (itemRoll === 6) {
-        itemRoll = roll();
-
-        if (itemRoll > 3) {
-          console.log('end game tbd');
-          state.playerCanMove = false;
-          return;
-        }
-
-        state.inventory.push(Items.Amulet);
-        state.message = 'You found an amulet! +1 attack';
-      }
-
-      const item = Object.values(Items).filter((n) => n === itemRoll);
-      state.inventory.push(item);
-      state.message = `You found an item: ${itemsDisplay[item]}`;
-      state.playerCanMove = true;
+      handleItem();
     } else {
-      // monster
-      state.activeMonster = { ...monsters[roll()] };
-
-      // bonus if monster is in preferred room
-      if (state.activeMonster.roomBonus === roomNum) {
-        state.activeMonster.hp++;
-      }
-
-      state.message = `There is a ${state.activeMonster.name}!`;
-      state.playerCanMove = false;
+      handleRoom(roomNum);
     }
   } else if (rooms[roomNum].status === RoomStatus.Clear) {
     state.message = 'This place looks familiar.';
   }
 
+  rooms[state.room].status = RoomStatus.Clear;
+
   render();
+}
+
+// new item
+function handleItem() {
+  let itemRoll = roll();
+
+  if (itemRoll === 6) {
+    itemRoll = roll();
+
+    if (itemRoll > 3) {
+      // todo: make a better ending
+      state.message +=
+        ' You found the coveted Amulet&nbsp;of&nbsp;Yendor!&nbsp;★ You win!';
+      state.playerCanMove = false;
+      state.playerWon = true;
+      return render();
+    }
+
+    state.message += ' You found an amulet! +1 attack and +1 against traps.';
+    state.inventory[Items.Amulet]++;
+    return;
+  }
+
+  const item = Object.values(Items).filter((n) => n === itemRoll);
+  state.message += ` You found an item: ${itemsDisplay[item]}`;
+  state.playerCanMove = true;
+
+  // update inventory
+  if (itemRoll === Items.Gold_1 || itemRoll === Items.Gold_2) {
+    state.gold += itemRoll === Items.Gold_1 ? 1 : 2;
+  } else {
+    state.inventory[itemRoll]++;
+  }
+}
+
+function handleRoom(roomNum) {
+  // roll for monster, but if we're below level 3 don't allow Dragons
+  let result = roll();
+
+  while (result === 6 && state.level < 2) {
+    result = roll();
+  }
+
+  // monster
+  state.activeMonster = { ...monsters[result] };
+
+  // bonus if monster is in preferred room
+  if (state.activeMonster.roomBonus === roomNum) {
+    state.activeMonster.hp++;
+  }
+
+  state.message = `There is a ${state.activeMonster.name}!`;
+  state.playerCanMove = false;
 }
 
 function nextLevel() {
+  if (!allRoomsAreClear() && state.level > 0) {
+    state.message = "You haven't cleared all rooms on this level yet.";
+    return render();
+  }
+
   state.level++;
   state.room = 1;
+  state.gold++;
+  state.message =
+    "You found a shop. And a gold coin! There's a vending machine... healing potions, 2 gold coins each.";
+
+  resetRooms();
+
   render();
 }
 
-function render() {
-  console.log(state);
+function resetRooms() {
+  Object.keys(rooms).forEach((roomNum) => {
+    roomNum = parseInt(roomNum);
 
-  renderControls();
-  renderCharacter();
-  renderMarker();
+    if (roomNum === 1) {
+      return;
+    }
 
-  document.querySelector('.message').innerHTML = state.message;
+    rooms[roomNum].status = RoomStatus.Open;
+  });
 }
 
+// amulets provide extra rolls against traps
 function rollAgainstTrap() {
-  const result = roll();
+  let result = roll();
+
+  for (let i = 0; i < state.inventory[Items.Amulet]; i++) {
+    result = Math.max(result, roll());
+  }
 
   if (success(result)) {
     state.message = `You successfully disarmed the trap with a roll of ${result}.`;
@@ -256,13 +310,69 @@ function rollCharacter() {
   state.character = result > 4 ? 3 : result > 2 ? 2 : 1;
   const race = races[state.character].name;
   const name = prompt(`Enter name for a brave ${race}.`);
-  state.name = name;
+  state.name = name || 'Player';
+  render();
+}
+
+function stateFactory(defaultName = 'Player') {
+  resetRooms();
+
+  return {
+    name: defaultName,
+    character: 0,
+    level: 0,
+    room: 0,
+    hp: 3,
+    gold: 0,
+    inventory: {
+      [Items.Sword]: 0,
+      [Items.Armor]: 0,
+      [Items.Potion]: 0,
+      [Items.Amulet]: 0
+    },
+    activeMonster: false, // monster object
+    activeTrap: false,
+    message: '',
+    playerCanMove: true,
+    playerWon: false,
+    races,
+    rooms,
+    monsters,
+    itemsDisplay,
+    Items
+  };
+}
+
+function useHealingPotion() {
+  if (!state.inventory[Items.Potion]) {
+    state.message = 'You are all out of healing potion!';
+    return render();
+  }
+
+  if (state.hp === 3) {
+    state.message = 'You are already at full health!';
+    return render();
+  }
+
+  state.inventory[Items.Potion]--;
+  state.hp++;
+  state.message = 'You recovered a hit point.';
   render();
 }
 
 // -- /Game functions --
 
 // -- Render functions ----------------------------
+
+function render() {
+  console.log(state);
+
+  renderControls();
+  renderCharacter();
+  renderLocation();
+  renderMarker();
+  renderMessage();
+}
 
 function renderCharacter() {
   const characterHtml = squirrelly(characterTemplate);
@@ -272,6 +382,11 @@ function renderCharacter() {
 function renderControls() {
   const controlsHtml = squirrelly(controlsTemplate);
   document.querySelector('.view-controls').innerHTML = controlsHtml;
+}
+
+function renderLocation() {
+  const locationHtml = squirrelly(locationTemplate);
+  document.querySelector('.location').innerHTML = locationHtml;
 }
 
 function renderMarker() {
@@ -285,6 +400,16 @@ function renderMarker() {
     const playerMarkerHtml = squirrelly(playerMarkerTemplate);
     document.querySelector('.player-marker').innerHTML = playerMarkerHtml;
   }
+}
+
+function renderMessage() {
+  const msg = document.querySelector('.message');
+  msg.classList.add('fade-out');
+
+  setTimeout(() => {
+    msg.innerHTML = state.message;
+    msg.classList.remove('fade-out');
+  }, 150);
 }
 
 function squirrelly(template, config = { useWith: true }) {
@@ -305,10 +430,19 @@ const success = (val) => val > 3;
 
 const roll = () => Math.floor(Math.random() * 6) + 1;
 
+const allRoomsAreClear = () =>
+  Object.values(rooms).every((room) => room.status === RoomStatus.Clear);
+
 // -- /Utils --
 
+// make these functions available to the window
 window.attack = attack;
+window.buyHealingPotion = buyHealingPotion;
 window.goToRoom = goToRoom;
+window.main = main;
+window.nextLevel = nextLevel;
 window.rollAgainstTrap = rollAgainstTrap;
+window.rollCharacter = rollCharacter;
+window.useHealingPotion = useHealingPotion;
 
 main();

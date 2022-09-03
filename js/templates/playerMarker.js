@@ -1,5 +1,7 @@
 export default `
-{{ @if (hp === 3) }}
+{{ @if (playerWon) }}
+🤩
+{{ #elif (hp === 3) }}
 🙂
 {{ #elif (hp === 2) }}
 😐
